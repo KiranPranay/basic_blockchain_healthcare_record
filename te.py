@@ -30,7 +30,7 @@ class Block:
         return h.hexdigest()
 
     def __str__(self):
-        return "Block Hash: " + str(self.hash()) + "\nBlockName: " + str(self.blockName)+ "\nBlock Data: " + str(self.data) + "\nHashes: " + str(self.nonce) + "\n--------------"
+        return "Block Hash: " + str(self.hash()) + "\nBlockName: " + str(self.blockName)+ "\nBlock Data: " + str(self.data) + "\nBlock Id:" + str(self.block_id) + "\nHashes: " + str(self.nonce) + "\n--------------"
 
 
 class Blockchain:
@@ -64,27 +64,18 @@ class Blockchain:
                 block.nonce += 1
 
     def get_by_id(self, block_id):
+        # block_id = uuid.UUID(block_id_str)
+        block_id = uuid.UUID(block_id)
         current_block = self.dummy.next
         while current_block is not None:
-            if current_block.block_id == block_id:
+            if current_block.block_id.hex == block_id:
                 return current_block
             current_block = current_block.next
         return None
-    def get_block_details(my_dict, block_id):
-        for block in my_dict:
-            if block['id'] == block_id:
-                return block
-        return "Block with ID '{}' not found".format(block_id)
 
 app = Flask(__name__)
 blockchain = Blockchain()
 my_dict = []
-
-def get_block_details(my_dict, block_id):
-        for block in my_dict:
-            if block['id'] == block_id:
-                return block
-        return "Block with ID '{}' not found".format(block_id)
 
 @app.route('/')
 def my_form():
@@ -92,33 +83,27 @@ def my_form():
 
 @app.route('/',methods=['POST', 'GET'])
 def my_form_post():
-	PatientName = request.form['PatientName']
-	Details = request.form['Details']
+	return okay()
+
+def okay():
+    if request.method == 'POST' and 'PatientName' in request.form:
+        PatientName = request.form['PatientName']
+        Details = request.form['Details']
+        nm, tx, id = blockchain.mine(Block(Details, PatientName))
+        my_dict.append([nm,tx,id])
+        return render_template('index.html', name_list = my_dict)
 	
-	nm, tx, id = blockchain.mine(Block(Details, PatientName))
-	my_dict.append([nm,tx,id])
-	return render_template('index.html', name_list = my_dict)
-
-@app.route('/view_record')
-def view_record_one():
-    return render_template('view_record.html',content = "")
-
-@app.route('/view_record', methods=['GET', 'POST'])
-def view_record():
-    # block = None
     if request.method == 'POST' and 'block_id' in request.form:
-        block_id_str = request.form['block_id']
-        block_id = uuid.UUID(block_id_str)
-        block = get_block_details(my_dict, block_id)
-        # block = blockchain.get_by_id(block_id)
-    if block is not None:
-        return render_template('view_record.html', content="Block Name: " + block.blockName + "<br>" +
-        "Block Data: " + block.data + "<br>" +
-        "Block ID: " + block.block_id + "<br>" +
-        "--------------")
-    else:
-        return render_template('view_record.html', content="Block with ID '{}' not found".format(block_id))
-    return render_template('view_record.html')
+        block_id = request.form['block_id']
+        block = blockchain.get_by_id(block_id)
+        if block is not None:
+            return render_template('index.html', content="Block Name: " + block.blockName + "<br>" +
+            "Block Data: " + block.data + "<br>" +
+            "Block ID: " + block.block_id + "<br>" +
+            "--------------")
+        else:
+            return render_template('index.html', content="Block with ID '{}' not found".format(block_id))
+        return render_template('index.html')
 
 
 if __name__=="__main__":
